@@ -1,0 +1,45 @@
+# ——— Python ———
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pdb
+*.egg-info/
+*.egg
+.eggs/
+build/
+dist/
+*.log
+
+# ——— Entornos ———
+.venv/
+venv/
+env/
+ENV/
+
+# ——— Herramientas ———
+.pytest_cache/
+.ipynb_checkpoints/
+.mypy_cache/
+.pyre/
+.pytype/
+
+# ——— IDEs/OS ———
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+
+# ——— Variables locales ———
+.env
+.env.*
+
+# ——— Artefactos del índice/modelo ———
+*.joblib
+*.pickle
+*.pkl
+
+# ——— Cobertura ———
+.coverage
+htmlcov/
