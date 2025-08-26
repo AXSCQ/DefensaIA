@@ -117,5 +117,3 @@ Añade stopwords (data/stopwords_es.txt) y re-entrena.
 
 
 ---
-
-¿Quieres que además agregue un **Dockerfile** y comandos `docker build/run` para tener una demo “todo en uno” sin instalar Python en la máquina destino?
