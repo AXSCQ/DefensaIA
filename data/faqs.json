@@ -1,8 +1,32 @@
 [
-    {"q": "¿Qué es inteligencia artificial?", "a": "Campo que diseña sistemas capaces de realizar tareas que normalmente requieren inteligencia humana."},
-    {"q": "¿Qué es aprendizaje supervisado?", "a": "Se entrena con ejemplos etiquetados para que el modelo generalice a datos nuevos."},
-    {"q": "¿Qué es TF-IDF?", "a": "Representación de texto que pondera términos por frecuencia en el documento y rareza en el corpus."},
-    {"q": "¿Cómo funciona este chatbot?", "a": "Convierte la consulta a vector TF-IDF y busca la pregunta más similar por similitud coseno."},
-    {"q": "¿Qué limitaciones tiene?", "a": "Si la pregunta no está en el corpus, el bot no puede inventar: pedirá reformular o mostrará sugerencias."}
+  {
+    "id": "1a2b3c4d-5e6f-7g8h-9i0j-1k2l3m4n5o6p",
+    "q": "¿Qué es inteligencia artificial?",
+    "a": "Campo que diseña sistemas capaces de realizar tareas que normalmente requieren inteligencia humana."
+  },
+  {
+    "id": "2b3c4d5e-6f7g-8h9i-0j1k-2l3m4n5o6p7q",
+    "q": "¿Qué es aprendizaje supervisado?",
+    "a": "Se entrena con ejemplos etiquetados para que el modelo generalice a datos nuevos."
+  },
+  {
+    "id": "3c4d5e6f-7g8h-9i0j-1k2l-3m4n5o6p7q8r",
+    "q": "¿Qué es TF-IDF?",
+    "a": "Representación de texto que pondera términos por frecuencia en el documento y rareza en el corpus."
+  },
+  {
+    "id": "4d5e6f7g-8h9i-0j1k-2l3m-4n5o6p7q8r9s",
+    "q": "¿Cómo funciona este chatbot?",
+    "a": "Convierte la consulta a vector TF-IDF y busca la pregunta más similar por similitud coseno."
+  },
+  {
+    "id": "5e6f7g8h-9i0j-1k2l-3m4n-5o6p7q8r9s0t",
+    "q": "¿Qué limitaciones tiene?",
+    "a": "Si la pregunta no está en el corpus, el bot no puede inventar: pedirá reformular o mostrará sugerencias."
+  },
+  {
+    "q": "¿Pregunta de prueba?",
+    "a": "Respuesta de Prueba",
+    "id": "20598ed1-c39c-46af-a93b-35041522748d"
+  }
 ]
-  

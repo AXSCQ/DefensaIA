@@ -1,118 +1,173 @@
-# Chatbot de FAQs (TF-IDF + FastAPI + Web)
-Chatbot sencillo y defendible (30 min) que responde FAQs por **similitud TF-IDF + coseno**.  
-Incluye: construcción de índice, **API FastAPI** y **demo web**.
+# Sistema Inteligente de FAQs con TF-IDF y FastAPI
 
-## 1) Requisitos
+## Descripción General
+
+Este proyecto implementa un sistema inteligente de preguntas frecuentes (FAQs) utilizando técnicas de Procesamiento de Lenguaje Natural (NLP) basadas en TF-IDF y similitud de coseno. El sistema es capaz de responder consultas de usuarios encontrando la pregunta más similar en su base de conocimiento y devolviendo la respuesta asociada.
+
+**Características principales:**
+- Vectorización TF-IDF para representación semántica de texto
+- Búsqueda por similitud de coseno
+- API RESTful completa con FastAPI
+- CRUD para gestión dinámica de FAQs
+- Reconstrucción de índice en caliente
+- Interfaz web interactiva
+- Umbral de confianza configurable
+
+## Fundamentos Teóricos
+
+### TF-IDF (Term Frequency-Inverse Document Frequency)
+
+TF-IDF es una técnica estadística que evalúa la importancia de una palabra en un documento en relación con una colección de documentos. Combina dos métricas:
+
+1. **TF (Term Frequency)**: Mide la frecuencia de aparición de un término en un documento.
+2. **IDF (Inverse Document Frequency)**: Penaliza términos comunes en toda la colección y premia términos distintivos.
+
+La fórmula general es: `TF-IDF(t,d,D) = TF(t,d) × IDF(t,D)`
+
+Esta técnica permite representar textos como vectores numéricos donde las palabras más informativas tienen mayor peso.
+
+### Similitud de Coseno
+
+La similitud de coseno mide el ángulo entre dos vectores, proporcionando un valor entre -1 y 1 (aunque con TF-IDF suele estar entre 0 y 1). Cuanto más cercano a 1, mayor similitud semántica.
+
+Fórmula: `cos(θ) = (A·B)/(||A||·||B||)`
+
+En nuestro sistema, comparamos el vector de la consulta del usuario con los vectores de todas las preguntas en nuestra base de conocimiento.
+
+## Requisitos
+
 - Python 3.10+ (recomendado 3.10–3.12)
 - Pip
-- (Opcional) Navegador moderno (Chrome/Firefox/Edge)
+- Navegador moderno (Chrome/Firefox/Edge)
 
-## 2) Clonado
+## Instalación y Configuración
+
 ```bash
+# Clonar repositorio
 git clone <URL_DE_TU_REPOSITORIO>.git
 cd ia-faq-bot
 
-
+# Crear entorno virtual
 python -m venv .venv
-source .venv/bin/activate
+source .venv/bin/activate  # En Windows: .venv\Scripts\activate
+
+# Instalar dependencias
 pip install -r requirements.txt
 
-[
-  {"q": "¿Qué es inteligencia artificial?", "a": "Campo que diseña sistemas capaces de realizar tareas que normalmente requieren inteligencia humana."},
-  {"q": "¿Qué es TF-IDF?", "a": "Representación de texto que pondera términos por frecuencia en el documento y rareza en el corpus."},
-  {"q": "¿Cómo funciona el bot?", "a": "Vectoriza la consulta y busca la pregunta más similar por similitud coseno."}
-]
-
-comando para ocontruir el indice
+# Construir índice inicial
 python train_index.py
 
-
-lo que se contruye
-
-
-Esto genera (ignorados por git):
-
-tfidf_pipe.joblib (vectorizador)
-
-faqs_texts.joblib (matriz X y textos)
-
-levantar la api 
-
+# Iniciar API
 uvicorn api:app --reload
 
-Swagger: http://127.0.0.1:8000/docs
-
-Probar POST /ask con {"query":"¿Qué es TF-IDF?"}
-
-
-## 7) Demo web (cliente)
-- Opción A — Servidor estático (recomendado)
-
+# En otra terminal, iniciar servidor web
 cd web
 python -m http.server 5500
+```
 
-Abrir: http://127.0.0.1:5500/index.html
+## Arquitectura del Sistema
 
+### Componentes Principales
 
-8) ¿Cómo funciona?
+1. **Vectorizador TF-IDF**: Transforma texto en vectores numéricos
+2. **Motor de Similitud**: Calcula similitud de coseno entre vectores
+3. **API RESTful**: Gestiona consultas y administración de FAQs
+4. **Base de Conocimiento**: Almacena pares pregunta-respuesta
+5. **Interfaz Web**: Permite interacción con usuarios finales
 
-TF-IDF convierte cada pregunta del corpus en un vector (palabras informativas pesan más).
+### Estructura de Archivos
 
-La consulta del usuario se vectoriza igual.
-
-Similitud coseno compara la consulta con todas las preguntas; devolvemos la de mayor score.
-
-Si el score < umbral (CONFIDENCE_THRESHOLD), el bot no inventa: pide reformular.
-
-9) Parámetros clave
-
-CONFIDENCE_THRESHOLD (en api.py, default 0.25): sube para ser más estricto.
-
-ngram_range (en train_index.py, default (1,2)): aumenta a (1,3) si quieres captar frases más largas.
-
-data/stopwords_es.txt (opcional): lista de stopwords para limpiar ruido.
-
-
-
+```
 ia-faq-bot/
-├─ requirements.txt
+├─ requirements.txt      # Dependencias del proyecto
 ├─ data/
-│  ├─ faqs.json
-│  └─ stopwords_es.txt     # opcional
-├─ train_index.py
-├─ api.py
+│  ├─ faqs.json         # Base de conocimiento (preguntas y respuestas)
+│  └─ stopwords_es.txt  # Palabras vacías para filtrar (opcional)
+├─ train_index.py       # Script para construir el índice TF-IDF
+├─ api.py               # API FastAPI con endpoints
 ├─ web/
-│  └─ index.html
+│  └─ index.html        # Interfaz de usuario
 └─ (generados)
-   ├─ tfidf_pipe.joblib
-   └─ faqs_texts.joblib
+   ├─ tfidf_pipe.joblib # Modelo serializado
+   └─ faqs_texts.joblib # Vectores y textos procesados
+```
 
-# instalar
-pip install -r requirements.txt
+## Funcionalidades API
 
-# entrenar índice
-python train_index.py
+### Consulta de FAQs
 
-# API
-uvicorn api:app --reload
+- **POST /ask**: Responde a consultas de usuarios
+  - Input: `{"query": "¿Qué es TF-IDF?"}`
+  - Output: `{"answer": "...", "match_question": "...", "score": 0.95}`
 
-# web
-cd web && python -m http.server 5500
+- **POST /topk**: Devuelve las k respuestas más similares
+  - Input: `{"query": "inteligencia"}`
+  - Output: Lista de coincidencias ordenadas por similitud
 
+### Gestión de FAQs (CRUD)
 
-12) Troubleshooting
+- **GET /faqs**: Lista todas las FAQs disponibles
+- **POST /faqs**: Crea una nueva FAQ
+  - Input: `{"q": "¿Nueva pregunta?", "a": "Nueva respuesta"}`
+- **PUT /faqs/{id}**: Actualiza una FAQ existente
+- **DELETE /faqs/{id}**: Elimina una FAQ
+- **POST /reload**: Reconstruye el índice sin reiniciar el servidor
 
-CORS o bloqueo al abrir index.html
-Usa el servidor local (python -m http.server 5500).
+## Flujo de Procesamiento
 
-Puerto ocupado
-uvicorn api:app --reload --port 8001 o python -m http.server 5501.
+1. **Entrenamiento**:
+   - Carga de FAQs desde JSON
+   - Vectorización TF-IDF de preguntas
+   - Almacenamiento de vectores y modelo
 
-Cambiaste FAQs y no se refleja
-Vuelve a correr python train_index.py.
+2. **Consulta**:
+   - Recepción de consulta de usuario
+   - Vectorización de la consulta
+   - Cálculo de similitud con todas las preguntas
+   - Selección de respuesta más similar si supera umbral
 
-Acentos/ruido
-Añade stopwords (data/stopwords_es.txt) y re-entrena.
+3. **Administración**:
+   - Modificación de FAQs mediante API
+   - Reconstrucción de índice en caliente
+
+## Parámetros Configurables
+
+- **CONFIDENCE_THRESHOLD** (en api.py, default 0.25): Umbral mínimo de confianza para responder
+- **ngram_range** (en train_index.py, default (1,2)): Tamaño de n-gramas para capturar frases
+- **Stopwords**: Palabras a ignorar durante vectorización (data/stopwords_es.txt)
+
+## Ventajas del Enfoque
+
+1. **Eficiencia**: Algoritmo ligero que no requiere GPU ni grandes recursos
+2. **Transparencia**: Funcionamiento explicable y resultados predecibles
+3. **Mantenibilidad**: Fácil actualización de contenido sin conocimientos técnicos
+4. **Adaptabilidad**: Funciona con cualquier conjunto de FAQs en cualquier idioma
+5. **Control de calidad**: El umbral de confianza evita respuestas incorrectas
+
+## Limitaciones y Trabajo Futuro
+
+1. **Sensibilidad léxica**: Depende de coincidencia de palabras exactas
+   - *Mejora propuesta*: Incorporar embeddings semánticos (Word2Vec, BERT)
+
+2. **Sin contexto conversacional**: Cada consulta se procesa independientemente
+   - *Mejora propuesta*: Implementar gestión de contexto y memoria a corto plazo
+
+3. **Escalabilidad limitada**: Rendimiento puede degradarse con miles de FAQs
+   - *Mejora propuesta*: Implementar búsqueda aproximada de vecinos más cercanos
+
+## Solución de Problemas
+
+- **CORS o bloqueo al abrir index.html**: Usa el servidor local (python -m http.server 5500)
+- **Puerto ocupado**: Cambia los puertos (uvicorn api:app --port 8001)
+- **Acentos/ruido**: Añade stopwords en data/stopwords_es.txt y reconstruye el índice
+
+## Documentación API
+
+Swagger UI disponible en: http://127.0.0.1:8000/docs
+
+## Demo Web
+
+Interfaz de usuario disponible en: http://127.0.0.1:5500/index.html
 
 
 

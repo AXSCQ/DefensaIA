@@ -3,41 +3,294 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Chatbot FAQs — Demo</title>
+  <title>Sistema Inteligente de FAQs - Demo</title>
   <style>
-    body { font-family: system-ui, sans-serif; margin: 0; background:#f6f7fb; }
-    .wrap { max-width: 820px; margin: 0 auto; padding: 24px; }
+    :root {
+      --primary: #3b82f6;
+      --primary-light: #e1f0ff;
+      --secondary: #64748b;
+      --secondary-light: #eef2f7;
+      --success: #22c55e;
+      --danger: #ef4444;
+      --warning: #f59e0b;
+      --background: #f6f7fb;
+      --text: #1e293b;
+      --text-light: #6b7280;
+      --border: #cfd6e0;
+      --radius: 12px;
+      --shadow: 0 10px 25px rgba(0,0,0,.06);
+    }
+    
+    * { box-sizing: border-box; }
+    body { 
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif; 
+      margin: 0; 
+      background: var(--background);
+      color: var(--text);
+      line-height: 1.5;
+    }
+    .wrap { max-width: 1100px; margin: 0 auto; padding: 24px; }
+    h1, h2, h3 { margin-top: 0; color: var(--text); }
     h1 { margin: 8px 0 16px; }
-    .card { background: #fff; border-radius: 14px; padding: 16px; box-shadow: 0 10px 25px rgba(0,0,0,.06); }
-    .msgs { height: 50vh; overflow:auto; padding: 8px 0; }
-    .msg { display:flex; margin: 8px 0; }
+    h2 { font-size: 1.4rem; margin-bottom: 16px; }
+    
+    .card { 
+      background: #fff; 
+      border-radius: var(--radius); 
+      padding: 20px; 
+      box-shadow: var(--shadow); 
+      margin-bottom: 24px;
+    }
+    
+    .tabs {
+      display: flex;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 20px;
+    }
+    .tab {
+      padding: 10px 20px;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      font-weight: 500;
+      color: var(--text-light);
+    }
+    .tab.active {
+      color: var(--primary);
+      border-bottom: 2px solid var(--primary);
+    }
+    
+    .tab-content {
+      display: none;
+    }
+    .tab-content.active {
+      display: block;
+    }
+    
+    /* Chat UI */
+    .msgs { height: 50vh; overflow: auto; padding: 8px 0; }
+    .msg { display: flex; margin: 8px 0; }
     .me { justify-content: flex-end; }
-    .bubble { max-width: 80%; padding: 10px 14px; border-radius: 12px; }
-    .bubble.me { background:#e1f0ff; }
-    .bubble.bot { background:#eef2f7; }
-    .input { display:flex; gap:8px; margin-top: 12px; }
-    input { flex:1; padding: 12px; border-radius: 10px; border:1px solid #cfd6e0; }
-    button { padding: 12px 16px; border:0; border-radius: 10px; cursor:pointer; }
-    .meta { color:#6b7280; font-size:12px; margin-top:4px; }
+    .bubble { 
+      max-width: 80%; 
+      padding: 12px 16px; 
+      border-radius: var(--radius); 
+      box-shadow: 0 2px 5px rgba(0,0,0,.05);
+    }
+    .bubble.me { background: var(--primary-light); }
+    .bubble.bot { background: var(--secondary-light); }
+    .input { display: flex; gap: 8px; margin-top: 16px; }
+    input, select, textarea { 
+      flex: 1; 
+      padding: 12px; 
+      border-radius: 10px; 
+      border: 1px solid var(--border); 
+      font-family: inherit;
+      font-size: 1rem;
+    }
+    button { 
+      padding: 12px 16px; 
+      border: 0; 
+      border-radius: 10px; 
+      cursor: pointer; 
+      background: var(--primary); 
+      color: white; 
+      font-weight: 500;
+      transition: all 0.2s;
+    }
+    button:hover { opacity: 0.9; }
+    button.secondary { background: var(--secondary); }
+    button.success { background: var(--success); }
+    button.danger { background: var(--danger); }
+    button.warning { background: var(--warning); }
+    
+    .meta { color: var(--text-light); font-size: 12px; margin-top: 4px; }
+    
+    /* Admin UI */
+    .faq-list {
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+    .faq-item {
+      padding: 16px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .faq-item:last-child { border-bottom: none; }
+    .faq-content { flex: 1; }
+    .faq-actions { display: flex; gap: 8px; }
+    .faq-question { font-weight: 500; margin-bottom: 4px; }
+    .faq-answer { color: var(--text-light); }
+    
+    .form-group { margin-bottom: 16px; }
+    .form-group label { display: block; margin-bottom: 8px; font-weight: 500; }
+    .form-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px; }
+    
+    .alert {
+      padding: 12px 16px;
+      border-radius: var(--radius);
+      margin-bottom: 16px;
+      background: var(--primary-light);
+      border-left: 4px solid var(--primary);
+    }
+    .alert.success { background: #ecfdf5; border-color: var(--success); }
+    .alert.danger { background: #fef2f2; border-color: var(--danger); }
+    
+    .hidden { display: none; }
+    .flex { display: flex; }
+    .justify-between { justify-content: space-between; }
+    .items-center { align-items: center; }
+    .mb-4 { margin-bottom: 16px; }
   </style>
 </head>
 <body>
   <div class="wrap">
-    <h1>Chatbot de FAQs (TF-IDF)</h1>
-    <div class="card">
-      <div id="msgs" class="msgs"></div>
-      <div class="input">
-        <input id="q" placeholder="Escribe tu pregunta…" />
-        <button onclick="send()">Enviar</button>
+    <div class="flex justify-between items-center mb-4">
+      <h1>Sistema Inteligente de FAQs</h1>
+      <div>
+        <button id="reload-btn" class="warning" onclick="reloadIndex()">Recargar Índice</button>
+      </div>
+    </div>
+    
+    <div class="tabs">
+      <div class="tab active" data-tab="chat">Chat</div>
+      <div class="tab" data-tab="admin">Administración</div>
+      <div class="tab" data-tab="about">Acerca de</div>
+    </div>
+    
+    <!-- Tab: Chat -->
+    <div id="chat-tab" class="tab-content active">
+      <div class="card">
+        <div id="msgs" class="msgs"></div>
+        <div class="input">
+          <input id="q" placeholder="Escribe tu pregunta…" onkeydown="if(event.key==='Enter')send()" />
+          <button onclick="send()">Enviar</button>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Tab: Admin -->
+    <div id="admin-tab" class="tab-content">
+      <div class="card">
+        <div class="flex justify-between items-center mb-4">
+          <h2>Gestión de FAQs</h2>
+          <button onclick="showAddForm()">Añadir FAQ</button>
+        </div>
+        
+        <div id="add-form" class="hidden">
+          <div class="alert">Añadir nueva FAQ</div>
+          <div class="form-group">
+            <label for="new-question">Pregunta</label>
+            <input id="new-question" placeholder="Escribe la pregunta..." />
+          </div>
+          <div class="form-group">
+            <label for="new-answer">Respuesta</label>
+            <textarea id="new-answer" rows="3" placeholder="Escribe la respuesta..."></textarea>
+          </div>
+          <div class="form-actions">
+            <button class="secondary" onclick="cancelAddForm()">Cancelar</button>
+            <button class="success" onclick="addFaq()">Guardar</button>
+          </div>
+        </div>
+        
+        <div id="edit-form" class="hidden">
+          <div class="alert">Editar FAQ</div>
+          <input type="hidden" id="edit-id" />
+          <div class="form-group">
+            <label for="edit-question">Pregunta</label>
+            <input id="edit-question" placeholder="Escribe la pregunta..." />
+          </div>
+          <div class="form-group">
+            <label for="edit-answer">Respuesta</label>
+            <textarea id="edit-answer" rows="3" placeholder="Escribe la respuesta..."></textarea>
+          </div>
+          <div class="form-actions">
+            <button class="secondary" onclick="cancelEditForm()">Cancelar</button>
+            <button class="success" onclick="updateFaq()">Actualizar</button>
+          </div>
+        </div>
+        
+        <div id="faq-list" class="faq-list">
+          <!-- FAQs se cargarán aquí -->
+          <div class="faq-item">
+            <div class="faq-content">
+              <div class="faq-question">Cargando FAQs...</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Tab: About -->
+    <div id="about-tab" class="tab-content">
+      <div class="card">
+        <h2>Acerca del Sistema</h2>
+        <p>Este sistema inteligente de FAQs utiliza técnicas de Procesamiento de Lenguaje Natural (NLP) basadas en TF-IDF y similitud de coseno para responder consultas de usuarios.</p>
+        
+        <h3>Características principales:</h3>
+        <ul>
+          <li>Vectorización TF-IDF para representación semántica de texto</li>
+          <li>Búsqueda por similitud de coseno</li>
+          <li>API RESTful completa con FastAPI</li>
+          <li>CRUD para gestión dinámica de FAQs</li>
+          <li>Reconstrucción de índice en caliente</li>
+          <li>Interfaz web interactiva</li>
+        </ul>
+        
+        <h3>Funcionamiento:</h3>
+        <ol>
+          <li>TF-IDF convierte cada pregunta del corpus en un vector (palabras informativas pesan más)</li>
+          <li>La consulta del usuario se vectoriza igual</li>
+          <li>Similitud coseno compara la consulta con todas las preguntas</li>
+          <li>Se devuelve la respuesta asociada a la pregunta más similar</li>
+          <li>Si la similitud está por debajo del umbral, se pide reformular la consulta</li>
+        </ol>
       </div>
     </div>
   </div>
 
   <script>
-    const API = 'http://127.0.0.1:8000/ask';
+    // Configuración de API
+    const API_BASE = 'http://127.0.0.1:8001';
+    const API = {
+      ASK: `${API_BASE}/ask`,
+      FAQS: `${API_BASE}/faqs`,
+      RELOAD: `${API_BASE}/reload`
+    };
+    
+    // Referencias DOM
     const msgs = document.getElementById('msgs');
     const q = document.getElementById('q');
-
+    const tabs = document.querySelectorAll('.tab');
+    const tabContents = document.querySelectorAll('.tab-content');
+    
+    // Gestión de pestañas
+    tabs.forEach(tab => {
+      tab.addEventListener('click', () => {
+        const tabId = tab.getAttribute('data-tab');
+        
+        // Actualizar pestañas activas
+        tabs.forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        
+        // Mostrar contenido de pestaña
+        tabContents.forEach(content => {
+          content.classList.remove('active');
+          if (content.id === `${tabId}-tab`) {
+            content.classList.add('active');
+          }
+        });
+        
+        // Cargar datos si es necesario
+        if (tabId === 'admin') {
+          loadFaqs();
+        }
+      });
+    });
+    
+    // Funciones de chat
     function addBubble(text, who='bot', meta=''){
       const row = document.createElement('div');
       row.className = 'msg ' + (who==='me'?'me':'');
@@ -60,13 +313,196 @@
       if(!text) return;
       addBubble(text, 'me');
       q.value = '';
-      const res = await fetch(API, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({query:text})});
-      const data = await res.json();
-      const meta = data.match_question ? `Coincidencia: "${data.match_question}" | score: ${data.score.toFixed(3)}` : '';
-      addBubble(data.answer, 'bot', meta);
+      
+      try {
+        const res = await fetch(API.ASK, {
+          method: 'POST', 
+          headers: {'Content-Type': 'application/json'}, 
+          body: JSON.stringify({query: text})
+        });
+        
+        const data = await res.json();
+        const meta = data.match_question ? 
+          `Coincidencia: "${data.match_question}" | score: ${data.score.toFixed(3)}` : '';
+        addBubble(data.answer, 'bot', meta);
+      } catch (error) {
+        addBubble('Lo siento, ha ocurrido un error al procesar tu consulta. Por favor, inténtalo de nuevo.', 'bot');
+        console.error('Error:', error);
+      }
+    }
+    
+    // Funciones de administración
+    async function loadFaqs() {
+      try {
+        const res = await fetch(API.FAQS);
+        const faqs = await res.json();
+        
+        const faqList = document.getElementById('faq-list');
+        faqList.innerHTML = '';
+        
+        if (faqs.length === 0) {
+          faqList.innerHTML = '<div class="faq-item"><div class="faq-content">No hay FAQs disponibles.</div></div>';
+          return;
+        }
+        
+        faqs.forEach(faq => {
+          const faqItem = document.createElement('div');
+          faqItem.className = 'faq-item';
+          faqItem.innerHTML = `
+            <div class="faq-content">
+              <div class="faq-question">${faq.q}</div>
+              <div class="faq-answer">${faq.a}</div>
+            </div>
+            <div class="faq-actions">
+              <button class="secondary" onclick="editFaq('${faq.id}')">Editar</button>
+              <button class="danger" onclick="deleteFaq('${faq.id}')">Eliminar</button>
+            </div>
+          `;
+          faqList.appendChild(faqItem);
+        });
+      } catch (error) {
+        console.error('Error al cargar FAQs:', error);
+      }
+    }
+    
+    function showAddForm() {
+      document.getElementById('add-form').classList.remove('hidden');
+      document.getElementById('edit-form').classList.add('hidden');
+    }
+    
+    function cancelAddForm() {
+      document.getElementById('add-form').classList.add('hidden');
+      document.getElementById('new-question').value = '';
+      document.getElementById('new-answer').value = '';
+    }
+    
+    async function addFaq() {
+      const question = document.getElementById('new-question').value.trim();
+      const answer = document.getElementById('new-answer').value.trim();
+      
+      if (!question || !answer) {
+        alert('Por favor, completa todos los campos.');
+        return;
+      }
+      
+      try {
+        const res = await fetch(API.FAQS, {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({q: question, a: answer})
+        });
+        
+        if (res.ok) {
+          cancelAddForm();
+          loadFaqs();
+        } else {
+          alert('Error al añadir FAQ.');
+        }
+      } catch (error) {
+        console.error('Error:', error);
+        alert('Error al añadir FAQ.');
+      }
+    }
+    
+    async function editFaq(id) {
+      try {
+        const res = await fetch(API.FAQS);
+        const faqs = await res.json();
+        const faq = faqs.find(f => f.id === id);
+        
+        if (faq) {
+          document.getElementById('edit-id').value = faq.id;
+          document.getElementById('edit-question').value = faq.q;
+          document.getElementById('edit-answer').value = faq.a;
+          
+          document.getElementById('add-form').classList.add('hidden');
+          document.getElementById('edit-form').classList.remove('hidden');
+        }
+      } catch (error) {
+        console.error('Error:', error);
+      }
+    }
+    
+    function cancelEditForm() {
+      document.getElementById('edit-form').classList.add('hidden');
+    }
+    
+    async function updateFaq() {
+      const id = document.getElementById('edit-id').value;
+      const question = document.getElementById('edit-question').value.trim();
+      const answer = document.getElementById('edit-answer').value.trim();
+      
+      if (!question || !answer) {
+        alert('Por favor, completa todos los campos.');
+        return;
+      }
+      
+      try {
+        const res = await fetch(`${API.FAQS}/${id}`, {
+          method: 'PUT',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({q: question, a: answer})
+        });
+        
+        if (res.ok) {
+          cancelEditForm();
+          loadFaqs();
+        } else {
+          alert('Error al actualizar FAQ.');
+        }
+      } catch (error) {
+        console.error('Error:', error);
+        alert('Error al actualizar FAQ.');
+      }
+    }
+    
+    async function deleteFaq(id) {
+      if (!confirm('¿Estás seguro de que deseas eliminar esta FAQ?')) {
+        return;
+      }
+      
+      try {
+        const res = await fetch(`${API.FAQS}/${id}`, {
+          method: 'DELETE'
+        });
+        
+        if (res.ok) {
+          loadFaqs();
+        } else {
+          alert('Error al eliminar FAQ.');
+        }
+      } catch (error) {
+        console.error('Error:', error);
+        alert('Error al eliminar FAQ.');
+      }
+    }
+    
+    async function reloadIndex() {
+      try {
+        const button = document.getElementById('reload-btn');
+        button.textContent = 'Recargando...';
+        button.disabled = true;
+        
+        const res = await fetch(API.RELOAD, {method: 'POST'});
+        const data = await res.json();
+        
+        if (res.ok) {
+          alert(`Índice recargado exitosamente. ${data.items} preguntas indexadas.`);
+        } else {
+          alert('Error al recargar el índice.');
+        }
+      } catch (error) {
+        console.error('Error:', error);
+        alert('Error al recargar el índice.');
+      } finally {
+        const button = document.getElementById('reload-btn');
+        button.textContent = 'Recargar Índice';
+        button.disabled = false;
+      }
     }
 
-    addBubble('¡Hola! Soy tu bot de FAQs. Pregúntame sobre el tema de la defensa.');
+    // Inicialización
+    addBubble('¡Hola! Soy tu asistente de FAQs. Pregúntame lo que necesites saber.');
   </script>
 </body>
 </html>
