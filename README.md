@@ -1,4 +1,4 @@
-# Sistema Inteligente de FAQs con TF-IDF y FastAPI
+# Sistema Inteligente de FAQs con TF-IDF, FastAPI y PostgreSQL
 
 ## Descripción General
 
@@ -12,6 +12,8 @@ Este proyecto implementa un sistema inteligente de preguntas frecuentes (FAQs) u
 - Reconstrucción de índice en caliente
 - Interfaz web interactiva
 - Umbral de confianza configurable
+- Base de datos PostgreSQL para almacenamiento persistente
+- Registro de consultas para análisis
 
 ## Fundamentos Teóricos
 
@@ -38,9 +40,12 @@ En nuestro sistema, comparamos el vector de la consulta del usuario con los vect
 
 - Python 3.10+ (recomendado 3.10–3.12)
 - Pip
+- PostgreSQL 12+
 - Navegador moderno (Chrome/Firefox/Edge)
 
 ## Instalación y Configuración
+
+### 1. Preparación del entorno
 
 ```bash
 # Clonar repositorio
@@ -53,8 +58,25 @@ source .venv/bin/activate  # En Windows: .venv\Scripts\activate
 
 # Instalar dependencias
 pip install -r requirements.txt
+```
 
-# Construir índice inicial
+### 2. Configuración de PostgreSQL
+
+```bash
+# Asegúrate de que PostgreSQL esté en ejecución
+sudo systemctl status postgresql  # Verificar estado
+
+# Crear base de datos (usando usuario postgres)
+sudo -u postgres psql -c "CREATE DATABASE DefensaIA;"
+
+# Crear tablas y estructura
+python migrate_to_postgres.py  # Este script crea las tablas necesarias
+```
+
+### 3. Construir índice y ejecutar
+
+```bash
+# Construir índice inicial (ahora desde PostgreSQL)
 python train_index.py
 
 # Iniciar API
@@ -75,21 +97,41 @@ python -m http.server 5500
 4. **Base de Conocimiento**: Almacena pares pregunta-respuesta
 5. **Interfaz Web**: Permite interacción con usuarios finales
 
-### Estructura de Archivos
+### Estructura de Archivos y Base de Datos
+
+### Archivos
 
 ```
-ia-faq-bot/
-├─ requirements.txt      # Dependencias del proyecto
-├─ data/
-│  ├─ faqs.json         # Base de conocimiento (preguntas y respuestas)
-│  └─ stopwords_es.txt  # Palabras vacías para filtrar (opcional)
-├─ train_index.py       # Script para construir el índice TF-IDF
-├─ api.py               # API FastAPI con endpoints
-├─ web/
-│  └─ index.html        # Interfaz de usuario
-└─ (generados)
-   ├─ tfidf_pipe.joblib # Modelo serializado
-   └─ faqs_texts.joblib # Vectores y textos procesados
+.
+├── web/                 # Interfaz web
+│   └── index.html      # Cliente web simple
+├── api.py              # API REST (FastAPI)
+├── train_index.py      # Script para crear índice TF-IDF
+├── tfidf_pipe.joblib   # Pipeline TF-IDF serializado
+├── faqs_texts.joblib   # Vectores y textos serializados
+├── migrate_to_postgres.py # Script de migración a PostgreSQL
+├── stopwords_es.txt    # Palabras vacías en español (opcional)
+├── requirements.txt    # Dependencias Python
+└── README.md           # Documentación
+```
+
+### Estructura de la Base de Datos
+
+```
+DefensaIA (Base de datos PostgreSQL)
+├─ faq                # Tabla principal de preguntas y respuestas
+│  ├─ id (UUID)       # Identificador único
+│  ├─ q (TEXT)        # Pregunta
+│  └─ a (TEXT)        # Respuesta
+├─ vector_tfidf       # Vectores TF-IDF para cada FAQ
+│  ├─ faq_id (UUID)   # Referencia a faq.id
+│  └─ vector_data (BYTEA) # Vector serializado
+└─ consulta           # Registro de consultas realizadas
+   ├─ id (UUID)       # Identificador único
+   ├─ texto (TEXT)     # Texto de la consulta
+   ├─ timestamp       # Fecha y hora
+   ├─ score (FLOAT)    # Puntuación de similitud
+   └─ faq_id (UUID)   # Referencia a la FAQ respondida
 ```
 
 ## Funcionalidades API
@@ -116,19 +158,20 @@ ia-faq-bot/
 ## Flujo de Procesamiento
 
 1. **Entrenamiento**:
-   - Carga de FAQs desde JSON
+   - Carga de FAQs desde PostgreSQL
    - Vectorización TF-IDF de preguntas
-   - Almacenamiento de vectores y modelo
+   - Almacenamiento de vectores en la base de datos y modelo en disco
 
 2. **Consulta**:
    - Recepción de consulta de usuario
    - Vectorización de la consulta
    - Cálculo de similitud con todas las preguntas
    - Selección de respuesta más similar si supera umbral
+   - Registro de la consulta en la base de datos para análisis
 
 3. **Administración**:
-   - Modificación de FAQs mediante API
-   - Reconstrucción de índice en caliente
+   - Modificación de FAQs mediante API (almacenadas en PostgreSQL)
+   - Reconstrucción de índice en caliente con actualización de vectores en la BD
 
 ## Parámetros Configurables
 
@@ -143,6 +186,8 @@ ia-faq-bot/
 3. **Mantenibilidad**: Fácil actualización de contenido sin conocimientos técnicos
 4. **Adaptabilidad**: Funciona con cualquier conjunto de FAQs en cualquier idioma
 5. **Control de calidad**: El umbral de confianza evita respuestas incorrectas
+6. **Persistencia**: Almacenamiento en PostgreSQL para mayor seguridad y escalabilidad
+7. **Análisis**: Registro de consultas para estudiar patrones de uso y mejorar el sistema
 
 ## Limitaciones y Trabajo Futuro
 
@@ -152,13 +197,18 @@ ia-faq-bot/
 2. **Sin contexto conversacional**: Cada consulta se procesa independientemente
    - *Mejora propuesta*: Implementar gestión de contexto y memoria a corto plazo
 
-3. **Escalabilidad limitada**: Rendimiento puede degradarse con miles de FAQs
-   - *Mejora propuesta*: Implementar búsqueda aproximada de vecinos más cercanos
+3. **Escalabilidad mejorable**: A pesar de usar PostgreSQL, el cálculo de similitud se realiza en memoria
+   - *Mejora propuesta*: Implementar búsqueda aproximada de vecinos más cercanos o utilizar extensiones de PostgreSQL para búsqueda vectorial
+
+4. **Análisis de datos**: El registro actual es básico
+   - *Mejora propuesta*: Implementar dashboard de análisis con estadísticas de uso
 
 ## Solución de Problemas
 
 - **CORS o bloqueo al abrir index.html**: Usa el servidor local (python -m http.server 5500)
 - **Puerto ocupado**: Cambia los puertos (uvicorn api:app --port 8001)
+- **Problemas de conexión a PostgreSQL**: Verifica credenciales y que el servicio esté activo
+- **Error en migración**: Ejecuta `python migrate_to_postgres.py` para recrear las tablas
 - **Acentos/ruido**: Añade stopwords en data/stopwords_es.txt y reconstruye el índice
 
 ## Documentación API

@@ -1,6 +1,6 @@
-# Instrucciones para Ejecutar el Sistema FAQ-Bot
+# Instrucciones para Ejecutar el Sistema FAQ-Bot con PostgreSQL
 
-Este documento proporciona instrucciones paso a paso para descargar, configurar y ejecutar el sistema FAQ-Bot con TF-IDF desde cero.
+Este documento proporciona instrucciones paso a paso para descargar, configurar y ejecutar el sistema FAQ-Bot con TF-IDF y PostgreSQL desde cero.
 
 ## 1. Requisitos Previos
 
@@ -8,6 +8,7 @@ Asegúrate de tener instalado:
 
 - Python 3.10 o superior
 - Git
+- PostgreSQL 12 o superior
 - Navegador web moderno (Chrome, Firefox, Edge, etc.)
 
 ## 2. Descargar el Repositorio
@@ -22,10 +23,10 @@ cd ia-faq-bot
 
 ## 3. Configurar el Entorno
 
-### Opción A: Entorno Virtual (recomendado)
+### Paso 1: Entorno Python
 
 ```bash
-# Crear un entorno virtual
+# Crear un entorno virtual (recomendado)
 python3 -m venv venv
 
 # Activar el entorno virtual
@@ -38,11 +39,28 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### Opción B: Instalación Global
+### Paso 2: Configurar PostgreSQL
 
 ```bash
-# Instalar dependencias globalmente
-pip3 install -r requirements.txt
+# Verificar que PostgreSQL esté en ejecución
+# En Linux:
+sudo systemctl status postgresql
+# En Windows: verificar en el Administrador de servicios
+
+# Crear la base de datos (desde la terminal)
+sudo -u postgres psql -c "CREATE DATABASE DefensaIA;"
+
+# O conectarse manualmente a PostgreSQL y crear la base de datos
+sudo -u postgres psql
+CREATE DATABASE "DefensaIA";
+\q
+```
+
+### Paso 3: Migrar datos y crear tablas
+
+```bash
+# Ejecutar el script de migración (crea tablas y migra datos iniciales)
+python migrate_to_postgres.py
 ```
 
 ## 4. Entrenar el Índice TF-IDF
@@ -107,21 +125,50 @@ Si necesitas modificar la configuración del sistema:
 
 ## 10. Solución de Problemas
 
-### Error: "Address already in use"
+### Problemas con el servidor API
+
+#### Error: "Address already in use"
 Significa que el puerto ya está siendo utilizado. Intenta con un puerto diferente:
 ```bash
 uvicorn api:app --reload --port 8001
 ```
 Y actualiza `API_BASE` en `web/index.html` para que coincida con el nuevo puerto.
 
-### Error: "No module named X"
+#### Error: "No module named X"
 Asegúrate de haber instalado todas las dependencias:
 ```bash
 pip install -r requirements.txt
 ```
 
-### Error: "No se pueden cargar las FAQs"
-Verifica que el archivo `data/faqs.json` existe y tiene el formato correcto.
+### Problemas con PostgreSQL
+
+#### Error: "could not connect to server"
+Verifica que PostgreSQL esté en ejecución:
+```bash
+# En Linux
+sudo systemctl status postgresql
+# Si está detenido, iniciálo
+sudo systemctl start postgresql
+```
+
+#### Error: "database DefensaIA does not exist"
+La base de datos no ha sido creada. Crea la base de datos:
+```bash
+sudo -u postgres psql -c "CREATE DATABASE DefensaIA;"
+```
+
+#### Error: "relation faq does not exist"
+Las tablas no han sido creadas. Ejecuta el script de migración:
+```bash
+python migrate_to_postgres.py
+```
+
+#### Error: "password authentication failed for user postgres"
+Verifica las credenciales en los archivos `api.py`, `train_index.py` y `migrate_to_postgres.py`. Por defecto se usa:
+- Usuario: `postgres`
+- Contraseña: `postgres`
+
+Si necesitas cambiar las credenciales, modifica estos archivos o configura tu usuario PostgreSQL con estas credenciales.
 
 ## 11. Detener el Sistema
 
