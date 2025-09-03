@@ -87,6 +87,12 @@
       font-family: inherit;
       font-size: 1rem;
     }
+    mark {
+      background-color: #ffe066;
+      padding: 0 2px;
+      border-radius: 2px;
+      font-weight: normal;
+    }
     button { 
       padding: 12px 16px; 
       border: 0; 
@@ -257,7 +263,8 @@
     const API = {
       ASK: `${API_BASE}/ask`,
       FAQS: `${API_BASE}/faqs`,
-      RELOAD: `${API_BASE}/reload`
+      RELOAD: `${API_BASE}/reload`,
+      TOPK: `${API_BASE}/topk`
     };
     
     // Referencias DOM
@@ -291,12 +298,16 @@
     });
     
     // Funciones de chat
-    function addBubble(text, who='bot', meta=''){
+    function addBubble(text, who='bot', meta='', html=false){
       const row = document.createElement('div');
       row.className = 'msg ' + (who==='me'?'me':'');
       const bubble = document.createElement('div');
       bubble.className = 'bubble ' + (who==='me'?'me':'bot');
-      bubble.textContent = text;
+      if (html) {
+        bubble.innerHTML = text;
+      } else {
+        bubble.textContent = text;
+      }
       row.appendChild(bubble);
       msgs.appendChild(row);
       if(meta){
@@ -306,6 +317,18 @@
         msgs.appendChild(m);
       }
       msgs.scrollTop = msgs.scrollHeight;
+    }
+    
+    function highlightText(text, terms) {
+      let out = text;
+      for (const t of terms) {
+        if (!t) continue;
+        // escapar caracteres regex
+        const safe = t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        const re = new RegExp(`\\b(${safe})\\b`, "gi");
+        out = out.replace(re, "<mark>$1</mark>");
+      }
+      return out;
     }
 
     async function send(){
@@ -325,10 +348,50 @@
         const meta = data.match_question ? 
           `Coincidencia: "${data.match_question}" | score: ${data.score.toFixed(3)}` : '';
         addBubble(data.answer, 'bot', meta);
+        
+        // Si la confianza es baja, mostrar sugerencias con topK
+        if (data.score < 0.25) {
+          await consultarTopK(text);
+        }
       } catch (error) {
         addBubble('Lo siento, ha ocurrido un error al procesar tu consulta. Por favor, inténtalo de nuevo.', 'bot');
         console.error('Error:', error);
       }
+    }
+    
+    async function consultarTopK(query) {
+      try {
+        const r = await fetch(`${API.TOPK}?k=3`, {
+          method: "POST",
+          headers: {"Content-Type":"application/json"},
+          body: JSON.stringify({ query })
+        });
+        const data = await r.json(); // { results: [...], terms: [...] }
+        
+        if (data.results && data.results.length > 0) {
+          const topKHtml = renderTopK(data.results, data.terms || []);
+          addBubble(`<div><strong>¿Te referías a...?</strong>${topKHtml}</div>`, 'bot', '', true);
+        }
+      } catch (error) {
+        console.error('Error al consultar TopK:', error);
+      }
+    }
+    
+    function renderTopK(items, terms) {
+      let html = '';
+      items.forEach(it => {
+        const qHTML = highlightText(it.question, terms);
+        const aHTML = highlightText(it.answer, terms);
+        const score = it.score.toFixed(3);
+        html += `
+          <div class="card" style="margin-top: 10px; padding: 10px; border: 1px solid #eee; border-radius: 8px;">
+            <div style="font-size: 0.8em; color: #666;">score: ${score}</div>
+            <div style="font-weight: bold;">${qHTML}</div>
+            <div>${aHTML}</div>
+          </div>
+        `;
+      });
+      return html;
     }
     
     // Funciones de administración

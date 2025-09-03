@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import joblib
@@ -6,8 +6,11 @@ import psycopg2
 import psycopg2.extras
 import pickle
 import uuid
+import re
+import unicodedata
 from pathlib import Path
 from sklearn.metrics.pairwise import cosine_similarity
+from sklearn.feature_extraction.text import strip_accents_unicode
 from typing import List, Dict, Any, Optional
 
 # Configuración de la base de datos
@@ -21,12 +24,46 @@ DB_PORT = "5432"
 PIPE_PATH = Path("tfidf_pipe.joblib")
 FAQS_PATH = Path("faqs_texts.joblib")
 
+# Función para normalizar texto (igual que en train_index.py)
+def normalize_text(text: str) -> str:
+    """Normaliza el texto: minúsculas, sin acentos, sin puntuación"""
+    text = text.lower().strip()
+    # quitar acentos
+    text = strip_accents_unicode(text)
+    # quitar signos/puntuación
+    text = re.sub(r"[^\w\s]", " ", text)
+    text = re.sub(r"\s+", " ", text).strip()
+    return text
+
+# Diccionario de sinónimos locales (ejemplos; ampliar según necesidades)
+SYN = {
+    "viaticos": ["viatico", "gastos de viaje", "pasajes", "reembolso"],
+    "vacaciones": ["licencia", "descanso", "vacas", "permiso"],
+    "justificar": ["sustentar", "motivar", "respaldar", "fundamentar"],
+    "sueldo": ["salario", "remuneracion", "pago", "honorarios"],
+    "contrato": ["convenio", "acuerdo", "vinculo laboral"],
+    "horario": ["jornada", "tiempo", "horas de trabajo"],
+    "capacitacion": ["formacion", "entrenamiento", "curso", "taller"]
+}
+
+def expand_query(q: str) -> str:
+    """Expande la consulta con sinónimos relevantes"""
+    nq = normalize_text(q)  # Usar la función de normalización
+    tokens = set(nq.split())
+    extra = []
+    for k, alts in SYN.items():
+        if k in tokens or any(a in tokens for a in alts):
+            extra.extend(alts + [k])
+    if extra:
+        nq = f"{nq} " + " ".join(sorted(set(extra)))
+    return nq
+
 # Cargar artefactos
 pipe = joblib.load(PIPE_PATH)
 store = joblib.load(FAQS_PATH)
 X = store["X"]; QUESTIONS = store["questions"]; ANSWERS = store["answers"]; FAQ_IDS = store["ids"]
 
-CONFIDENCE_THRESHOLD = 0.25
+CONFIDENCE_THRESHOLD = 0.10
 
 app = FastAPI(title="FAQ Chatbot (TF-IDF)", version="1.0")
 
@@ -52,6 +89,7 @@ class RankItem(BaseModel):
 
 class TopKOut(BaseModel):
     results: List[RankItem]
+    terms: List[str] = []
     
 class FaqItem(BaseModel):
     q: str
@@ -134,20 +172,26 @@ def root():
     return {"status": "ok", "items": len(QUESTIONS)}
 
 @app.post("/ask", response_model=AskOut)
-def ask(payload: AskIn):
+def ask(payload: AskIn, threshold: float = CONFIDENCE_THRESHOLD):
     """Responde a una consulta buscando la pregunta más similar"""
-    q = (payload.query or "").strip()
-    if not q:
+    q_raw = (payload.query or "").strip()
+    if not q_raw:
         return {"answer": "Por favor, escribe una pregunta.", "match_question": "", "score": 0.0}
     
-    # Transformar la consulta
-    v = pipe.transform([q])
+    # Expandir y normalizar la consulta
+    q = expand_query(q_raw)
+    
+    # Preprocesar la consulta expandida (igual que en entrenamiento)
+    processed_query = normalize_text(q)
+    
+    # Vectorizar consulta preprocesada
+    v = pipe.transform([processed_query])
     scores = cosine_similarity(v, X).ravel()
     ix = int(scores.argmax())
     score = float(scores[ix])
     
     # Preparar respuesta
-    if score < CONFIDENCE_THRESHOLD:
+    if score < threshold:
         response = {
             "answer": "No estoy seguro. ¿Puedes reformular o ser más específico?",
             "match_question": "",
@@ -180,10 +224,41 @@ def ask(payload: AskIn):
     return response
 
 @app.post("/topk", response_model=TopKOut)
-def topk(payload: AskIn, k: int = 5):
-    """Devuelve las k respuestas más similares a la consulta"""
-    q = (payload.query or "").strip()
-    v = pipe.transform([q])
+def topk(payload: AskIn, k: int = Query(5, ge=1, le=10)):
+    """Devuelve las k respuestas más similares a la consulta y términos para resaltar"""
+    q_raw = (payload.query or "").strip()
+    
+    # Expandir y normalizar la consulta
+    q = expand_query(q_raw)
+    
+    # Preprocesar la consulta expandida (igual que en entrenamiento)
+    processed_query = normalize_text(q)
+    
+    v = pipe.transform([processed_query])
+    
+    # términos top-N por peso TF-IDF de la consulta
+    highlight_terms = []
+    try:
+        feature_names = pipe.named_steps["tfidf"].get_feature_names_out()
+        arr = v.toarray()[0]
+        nz = arr.nonzero()[0]
+        # ordena por peso descendente y toma hasta 5
+        if len(nz) > 0:
+            top_term_idx = nz[arr[nz].argsort()[::-1][:5]]
+            highlight_terms = [feature_names[i] for i in top_term_idx]
+    except Exception:
+        # por compatibilidad si el nombre del paso difiere
+        try:
+            feature_names = pipe.steps[0][1].get_feature_names_out()
+            arr = v.toarray()[0]
+            nz = arr.nonzero()[0]
+            if len(nz) > 0:
+                top_term_idx = nz[arr[nz].argsort()[::-1][:5]]
+                highlight_terms = [feature_names[i] for i in top_term_idx]
+        except Exception:
+            # Si falla, no devolvemos términos para resaltar
+            pass
+    
     scores = cosine_similarity(v, X).ravel()
     idx = scores.argsort()[::-1][:k]
     
@@ -214,7 +289,7 @@ def topk(payload: AskIn, k: int = 5):
         # Ignorar errores en el registro de consultas
         pass
         
-    return {"results": results}
+    return {"results": results, "terms": highlight_terms}
 
 # Endpoints CRUD para FAQs
 @app.get("/faqs")
@@ -292,12 +367,25 @@ def reload_data():
     QUESTIONS = [it["q"].strip() for it in faqs]
     ANSWERS = [it["a"].strip() for it in faqs]
     
+    # Documento a indexar: PREGUNTA + RESPUESTA (aumenta recall)
+    raw_docs = [f"{q} {a}" for q, a in zip(QUESTIONS, ANSWERS)]
+    
+    # Preprocesar documentos
+    docs = [normalize_text(doc) for doc in raw_docs]
+    
     # Reconstruir índice
     # Actualizar configuración del vectorizador si hay stopwords
     if stopwords_es:
         pipe.named_steps['tfidf'].stop_words = stopwords_es
     
-    X = pipe.fit_transform(QUESTIONS)
+    # Configurar vectorizador
+    pipe.named_steps['tfidf'].lowercase = False  # Ya lo hicimos en el preprocesamiento
+    pipe.named_steps['tfidf'].preprocessor = None  # No usar preprocessor personalizado
+    pipe.named_steps['tfidf'].sublinear_tf = True
+    pipe.named_steps['tfidf'].ngram_range = (1, 3)
+    
+    # Entrenar con preguntas + respuestas preprocesadas
+    X = pipe.fit_transform(docs)
     
     # Guardar artefactos actualizados
     joblib.dump({"X": X, "questions": QUESTIONS, "answers": ANSWERS, "ids": FAQ_IDS}, FAQS_PATH)
