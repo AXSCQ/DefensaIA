@@ -67,10 +67,26 @@ CONFIDENCE_THRESHOLD = 0.10
 
 app = FastAPI(title="FAQ Chatbot (TF-IDF)", version="1.0")
 
+# Configuración de orígenes permitidos para CORS
+origins = [
+    "http://localhost:8000",      # Desarrollo local
+    "http://127.0.0.1:8000",      # Desarrollo local alternativo
+    "http://localhost",           # Servidor web simple
+    "http://127.0.0.1",          # Servidor web simple alternativo
+    "http://localhost:5500",      # Live Server de VSCode
+    "http://127.0.0.1:5500",      # Live Server de VSCode alternativo
+    "null",                       # Para cuando se accede desde file://
+    "*"                          # Permitir cualquier origen (solo para desarrollo)
+    # Añadir aquí dominios de producción cuando sea necesario
+    # "https://tudominio.com",
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], allow_credentials=True,
-    allow_methods=["*"], allow_headers=["*"]
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization", "X-Requested-With"]
 )
 
 # Modelos de datos
